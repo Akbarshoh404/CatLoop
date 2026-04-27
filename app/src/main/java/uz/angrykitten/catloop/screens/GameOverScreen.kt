@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,23 +30,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import uz.angrykitten.catloop.game.GameViewModel
 import uz.angrykitten.catloop.ui.theme.CatLoopColors
+import androidx.compose.foundation.Canvas as ComposeCanvas
 
 @Composable
 fun GameOverScreen(
@@ -66,7 +63,7 @@ fun GameOverScreen(
     // Entry animation
     val cardScale = remember { Animatable(0.85f) }
     LaunchedEffect(Unit) {
-        cardScale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 260f))
+        cardScale.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = 260f))
     }
 
     // Bounce animation for "NEW BEST" badge
@@ -74,7 +71,7 @@ fun GameOverScreen(
         initialValue  = 0.94f,
         targetValue   = 1.06f,
         animationSpec = infiniteRepeatable(
-            animation  = tween(500),
+            animation  = tween(480),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "bounceScale",
@@ -87,8 +84,7 @@ fun GameOverScreen(
                 Brush.verticalGradient(
                     colors = listOf(
                         CatLoopColors.Background,
-                        CatLoopColors.DarkRedCircle.copy(alpha = 0.08f),
-                        CatLoopColors.Background,
+                        Color(0xFFEDE4D4),
                     )
                 )
             ),
@@ -104,34 +100,23 @@ fun GameOverScreen(
                 .scale(cardScale.value),
         ) {
 
-            // ── Crash emoji + GAME OVER ────────────────────────────────────────
+            // ── Cat crash indicator (drawn icon, no emoji) ─────────────────
+            CatCrashIcon()
+
+            Spacer(Modifier.height(16.dp))
+
+            // GAME OVER
             Text(
-                text     = "🐱💥",
-                fontSize = 52.sp,
+                text          = "GAME OVER",
+                color         = CatLoopColors.DarkRedCircle,
+                fontWeight    = FontWeight.Black,
+                fontSize      = 40.sp,
+                letterSpacing = 2.sp,
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(32.dp))
 
-            // GAME OVER with layered shadow effect
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text       = "GAME OVER",
-                    color      = Color.White.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Black,
-                    fontSize   = 42.sp,
-                    modifier   = Modifier.offset(3.dp, 3.dp),
-                )
-                Text(
-                    text       = "GAME OVER",
-                    color      = CatLoopColors.DarkRedCircle,
-                    fontWeight = FontWeight.Black,
-                    fontSize   = 42.sp,
-                )
-            }
-
-            Spacer(Modifier.height(36.dp))
-
-            // ── Score card ────────────────────────────────────────────────────
+            // ── Score card ────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,14 +124,14 @@ fun GameOverScreen(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                CatLoopColors.DarkRedCircle.copy(alpha = 0.09f),
-                                CatLoopColors.DarkRedCircle.copy(alpha = 0.04f),
+                                CatLoopColors.DarkRedCircle.copy(alpha = 0.08f),
+                                CatLoopColors.DarkRedCircle.copy(alpha = 0.03f),
                             )
                         )
                     )
                     .border(
                         width  = 1.dp,
-                        color  = CatLoopColors.DarkRedCircle.copy(alpha = 0.2f),
+                        color  = CatLoopColors.DarkRedCircle.copy(alpha = 0.18f),
                         shape  = RoundedCornerShape(24.dp),
                     )
                     .padding(vertical = 28.dp, horizontal = 24.dp),
@@ -156,28 +141,19 @@ fun GameOverScreen(
                     Text(
                         text          = "YOUR SCORE",
                         color         = CatLoopColors.PrimaryOrange,
-                        fontSize      = 12.sp,
+                        fontSize      = 11.sp,
                         fontWeight    = FontWeight.Bold,
                         letterSpacing = 3.sp,
                     )
                     Spacer(Modifier.height(6.dp))
 
-                    // Big score number with shadow
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text       = score.toString(),
-                            color      = Color.White.copy(alpha = 0.5f),
-                            fontWeight = FontWeight.Black,
-                            fontSize   = 80.sp,
-                            modifier   = Modifier.offset(4.dp, 4.dp),
-                        )
-                        Text(
-                            text       = score.toString(),
-                            color      = CatLoopColors.TextBlack,
-                            fontWeight = FontWeight.Black,
-                            fontSize   = 80.sp,
-                        )
-                    }
+                    Text(
+                        text          = score.toString(),
+                        color         = CatLoopColors.TextBlack,
+                        fontWeight    = FontWeight.Black,
+                        fontSize      = 80.sp,
+                        letterSpacing = (-2).sp,
+                    )
 
                     Spacer(Modifier.height(8.dp))
 
@@ -185,9 +161,9 @@ fun GameOverScreen(
                     Box(
                         modifier = Modifier
                             .width(60.dp)
-                            .height(2.dp)
+                            .height(1.5.dp)
                             .background(
-                                CatLoopColors.DarkRedCircle.copy(alpha = 0.20f),
+                                CatLoopColors.DarkRedCircle.copy(alpha = 0.18f),
                                 RoundedCornerShape(1.dp),
                             )
                     )
@@ -195,29 +171,37 @@ fun GameOverScreen(
                     Spacer(Modifier.height(12.dp))
 
                     Text(
-                        text       = "BEST  ${maxOf(highScore, score)}",
-                        color      = CatLoopColors.TextBlack.copy(alpha = 0.55f),
-                        fontSize   = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text          = "BEST  ${maxOf(highScore, score)}",
+                        color         = CatLoopColors.TextBlack.copy(alpha = 0.5f),
+                        fontSize      = 18.sp,
+                        fontWeight    = FontWeight.SemiBold,
                         letterSpacing = 1.sp,
                     )
 
                     if (isNewBest) {
                         Spacer(Modifier.height(10.dp))
-                        Text(
-                            text       = "🎉  NEW BEST!",
-                            color      = CatLoopColors.YellowOrb,
-                            fontSize   = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier   = Modifier.scale(bounce),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .scale(bounce)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CatLoopColors.YellowOrb.copy(alpha = 0.18f))
+                                .padding(horizontal = 14.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text          = "NEW BEST",
+                                color         = Color(0xFFB8860B),
+                                fontSize      = 14.sp,
+                                fontWeight    = FontWeight.Black,
+                                letterSpacing = 2.sp,
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(36.dp))
 
-            // ── PLAY AGAIN button ─────────────────────────────────────────────
+            // ── PLAY AGAIN button ─────────────────────────────────────────
             Button(
                 onClick = {
                     viewModel.resetGame()
@@ -227,7 +211,7 @@ fun GameOverScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp),
+                    .height(58.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = CatLoopColors.DarkRedCircle,
@@ -236,16 +220,16 @@ fun GameOverScreen(
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
             ) {
                 Text(
-                    "▶  PLAY AGAIN",
+                    "PLAY AGAIN",
                     fontSize      = 18.sp,
                     fontWeight    = FontWeight.Black,
-                    letterSpacing = 2.sp,
+                    letterSpacing = 3.sp,
                 )
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // ── MAIN MENU outlined button ─────────────────────────────────────
+            // ── MAIN MENU button ──────────────────────────────────────────
             OutlinedButton(
                 onClick = {
                     navController.navigate("menu") {
@@ -254,11 +238,11 @@ fun GameOverScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
+                    .height(52.dp),
                 shape  = RoundedCornerShape(18.dp),
                 border = androidx.compose.foundation.BorderStroke(
-                    width = 2.dp,
-                    color = CatLoopColors.PrimaryOrange,
+                    width = 1.5.dp,
+                    color = CatLoopColors.PrimaryOrange.copy(alpha = 0.5f),
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = CatLoopColors.PrimaryOrange,
@@ -271,6 +255,77 @@ fun GameOverScreen(
                     letterSpacing = 2.sp,
                 )
             }
+        }
+    }
+}
+
+/** Draws a minimal cat + X icon without emojis. */
+@Composable
+private fun CatCrashIcon() {
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .clip(RoundedCornerShape(50))
+            .background(CatLoopColors.DarkRedCircle.copy(alpha = 0.1f))
+            .border(1.5.dp, CatLoopColors.DarkRedCircle.copy(alpha = 0.25f), RoundedCornerShape(50)),
+        contentAlignment = Alignment.Center,
+    ) {
+        ComposeCanvas(modifier = Modifier.size(40.dp)) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val r  = size.width * 0.38f
+
+            // Cat head circle
+            drawCircle(
+                color  = CatLoopColors.PrimaryOrange,
+                radius = r,
+                center = androidx.compose.ui.geometry.Offset(cx, cy),
+            )
+            drawCircle(
+                color  = CatLoopColors.DarkRedCircle,
+                radius = r,
+                center = androidx.compose.ui.geometry.Offset(cx, cy),
+                style  = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f * density),
+            )
+
+            // X eyes
+            val eyeOffset = r * 0.38f
+            val eyeSize   = r * 0.18f
+            val xColor    = CatLoopColors.DarkRedCircle
+
+            // Left X
+            drawLine(xColor, androidx.compose.ui.geometry.Offset(cx - eyeOffset - eyeSize, cy - eyeSize),
+                androidx.compose.ui.geometry.Offset(cx - eyeOffset + eyeSize, cy + eyeSize), 2f * density)
+            drawLine(xColor, androidx.compose.ui.geometry.Offset(cx - eyeOffset + eyeSize, cy - eyeSize),
+                androidx.compose.ui.geometry.Offset(cx - eyeOffset - eyeSize, cy + eyeSize), 2f * density)
+
+            // Right X
+            drawLine(xColor, androidx.compose.ui.geometry.Offset(cx + eyeOffset - eyeSize, cy - eyeSize),
+                androidx.compose.ui.geometry.Offset(cx + eyeOffset + eyeSize, cy + eyeSize), 2f * density)
+            drawLine(xColor, androidx.compose.ui.geometry.Offset(cx + eyeOffset + eyeSize, cy - eyeSize),
+                androidx.compose.ui.geometry.Offset(cx + eyeOffset - eyeSize, cy + eyeSize), 2f * density)
+
+            // Left ear
+            val earPath = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx - r * 0.35f, cy - r * 0.72f)
+                lineTo(cx - r * 0.72f, cy - r * 1.22f)
+                lineTo(cx - r * 0.02f, cy - r * 0.88f)
+                close()
+            }
+            drawPath(earPath, color = CatLoopColors.PrimaryOrange)
+            drawPath(earPath, color = CatLoopColors.DarkRedCircle,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f * density, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+
+            // Right ear
+            val earPath2 = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx + r * 0.02f, cy - r * 0.88f)
+                lineTo(cx + r * 0.72f, cy - r * 1.22f)
+                lineTo(cx + r * 0.35f, cy - r * 0.72f)
+                close()
+            }
+            drawPath(earPath2, color = CatLoopColors.PrimaryOrange)
+            drawPath(earPath2, color = CatLoopColors.DarkRedCircle,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f * density, join = androidx.compose.ui.graphics.StrokeJoin.Round))
         }
     }
 }

@@ -18,6 +18,7 @@ import uz.angrykitten.catloop.game.GameViewModel
 import uz.angrykitten.catloop.screens.GameOverScreen
 import uz.angrykitten.catloop.screens.GameScreen
 import uz.angrykitten.catloop.screens.MenuScreen
+import uz.angrykitten.catloop.screens.SettingsScreen
 import uz.angrykitten.catloop.screens.SplashScreen
 
 @Composable
@@ -45,6 +46,19 @@ fun NavGraph() {
             exitTransition  = { fadeOut(tween(250)) },
         ) {
             MenuScreen(navController = navController, viewModel = gameViewModel)
+        }
+
+        // ── Settings ──────────────────────────────────────────────────────
+        composable(
+            route = "settings",
+            enterTransition = {
+                slideInHorizontally(tween(350)) { it } + fadeIn(tween(350))
+            },
+            exitTransition  = {
+                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+            },
+        ) {
+            SettingsScreen(navController = navController, viewModel = gameViewModel)
         }
 
         // ── Game ──────────────────────────────────────────────────────────

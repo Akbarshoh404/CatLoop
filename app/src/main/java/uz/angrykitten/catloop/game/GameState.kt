@@ -11,6 +11,7 @@ package uz.angrykitten.catloop.game
  *  - Tapping the RIGHT half rotates the ring clockwise.
  *  - Cat direction is NEVER changed by taps.
  *  - Hitting an obstacle = game over.
+ *  - The cat's bounce direction includes random variation so movement is never repetitive.
  *
  * The center divider line is drawn to signal left/right control zones.
  */
@@ -30,7 +31,7 @@ data class GameState(
     val velX: Float = 0f,
     val velY: Float = 0f,
     /** Speed magnitude in ring-radii per second. */
-    val catSpeed: Float = 0.72f,
+    val catSpeed: Float = 1.1f,
 
     // ── Ring rotation (tap control) ───────────────────────────────────────────
     /** Current ring rotation angle in degrees. Offsets all spike positions. */
@@ -66,6 +67,7 @@ data class GameState(
     // ── Game lifecycle ────────────────────────────────────────────────────────
     val isRunning: Boolean = false,
     val gameOver: Boolean = false,
+    val isPaused: Boolean = false,
 
     // ── Difficulty ────────────────────────────────────────────────────────────
     val nextDifficultyScore: Int = 3,

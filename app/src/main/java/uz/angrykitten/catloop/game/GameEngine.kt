@@ -16,7 +16,7 @@ import kotlin.random.Random
  *
  * MECHANICS:
  *   1. The cat starts at the ring center and moves in a random direction.
- *   2. It bounces off the ring boundary wall (physics reflection).
+ *   2. It bounces off the ring boundary wall (physics reflection + random offset).
  *   3. FIRST bounce: ring has NO obstacles (safe pass).
  *      SUBSEQUENT bounces: a fresh random set of obstacles replaces the old ones.
  *   4. Tapping the LEFT half of the screen sets ring rotation to counter-clockwise.
@@ -24,6 +24,8 @@ import kotlin.random.Random
  *      Releasing (pointer up) stops the rotation.
  *   5. Tapping NEVER affects the cat's direction.
  *   6. If the cat hits an obstacle at the ring wall, game over.
+ *   7. The cat's direction varies after each bounce (random perturbation) so no two
+ *      games follow the same path.
  *
  * COORDINATE SYSTEM:
  *   - Origin (0,0) = ring center.
@@ -60,6 +62,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         const val SPIKE_POP_MS        = 260f
         const val RING_EDGE           = 1.0f
         const val PUSHBACK            = 0.960f
+
+        /**
+         * Maximum random angular perturbation added to the reflected velocity
+         * direction after each bounce (degrees). Ensures no repetitive patterns.
+         */
+        const val BOUNCE_JITTER_DEG   = 35f
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -75,6 +83,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             spikes    = emptyList(),   // NO obstacles at start
             spikeScales = emptyList(),
             isRunning = true,
+            isPaused  = false,
             bounceCount = 0,
         )
     }
@@ -85,7 +94,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun onPressDown(isRightSide: Boolean) {
         val s = _gameState.value
-        if (s.gameOver || !s.isRunning) return
+        if (s.gameOver || !s.isRunning || s.isPaused) return
         _gameState.value = s.copy(
             ringRotDir = if (isRightSide) 1 else -1,
         )
@@ -98,11 +107,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _gameState.value = s.copy(ringRotDir = 0)
     }
 
+    fun pauseGame() {
+        val s = _gameState.value
+        if (!s.isRunning || s.gameOver) return
+        _gameState.value = s.copy(isPaused = true, ringRotDir = 0)
+    }
+
+    fun resumeGame() {
+        val s = _gameState.value
+        if (!s.isRunning || s.gameOver) return
+        _gameState.value = s.copy(isPaused = false)
+    }
+
     // ── Game loop ─────────────────────────────────────────────────────────────
 
     fun update(deltaMs: Float) {
         val s = _gameState.value
-        if (s.gameOver || !s.isRunning) return
+        if (s.gameOver || !s.isRunning || s.isPaused) return
 
         val dt = deltaMs / 1000f
 
@@ -154,6 +175,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 velX   -= 2f * dot * nx
                 velY   -= 2f * dot * ny
 
+                // ── Random direction perturbation so patterns never repeat ───
+                val jitterRad = Math.toRadians(
+                    (Random.nextFloat() * 2f - 1f) * BOUNCE_JITTER_DEG.toDouble()
+                ).toFloat()
+                val cosJ = cos(jitterRad)
+                val sinJ = sin(jitterRad)
+                val jVelX = velX * cosJ - velY * sinJ
+                val jVelY = velX * sinJ + velY * cosJ
+                velX = jVelX
+                velY = jVelY
+
                 // Re-normalise to preserve speed
                 val mag = sqrt(velX * velX + velY * velY)
                 if (mag > 1e-6f) {
@@ -171,15 +203,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
                 // ── Difficulty scaling ────────────────────────────────────────
                 if (score >= nextDiff) {
-                    speed    = (speed    + 0.045f).coerceAtMost(1.55f)
-                    rotSpeed = (rotSpeed + 5.0f).coerceAtMost(180f)
+                    speed    = (speed    + 0.06f).coerceAtMost(2.0f)
+                    rotSpeed = (rotSpeed + 6.0f).coerceAtMost(200f)
                     nextDiff += 3
                 }
 
-                // ── Spawn NEW set of obstacles on every bounce after the 1st ─
-                // On bounce #1 (first touch), no obstacles. From bounce #2 onwards,
-                // replace with a fresh random set.
-                if (bounceCount >= 2) {
+                // ── Spawn NEW set of obstacles on every bounce from the 1st ──
+                // From bounce #1 onwards, replace with a fresh random set.
+                if (bounceCount >= 1) {
                     val spikeCount = calculateSpikeCount(bounceCount, score)
                     val avoidRel   = normalizeAngle(hitAbsDeg - newRingAngle)
                     val newSpikes  = generateSpikes(spikeCount, avoidRel)

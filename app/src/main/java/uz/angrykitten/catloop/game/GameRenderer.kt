@@ -3,15 +3,22 @@ package uz.angrykitten.catloop.game
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import uz.angrykitten.catloop.ui.components.drawCatFace
 import uz.angrykitten.catloop.ui.components.drawPawPrints
@@ -25,7 +32,7 @@ import kotlin.math.*
 /** Background fill + subtle paw-print watermark. */
 fun DrawScope.drawGameBackground(canvasSize: Size) {
     drawRect(color = CatLoopColors.Background, size = canvasSize)
-    drawPawPrints(canvasSize, alpha = 0.045f)
+    drawPawPrints(canvasSize, alpha = 0.04f)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,29 +40,21 @@ fun DrawScope.drawGameBackground(canvasSize: Size) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Draws a vertical center divider line from top to bottom.
- * This visually signals that the LEFT side rotates CCW and RIGHT side rotates CW.
+ * Draws a very subtle vertical center divider line from top to bottom.
+ * Signals LEFT = CCW, RIGHT = CW.
  */
 fun DrawScope.drawCenterDivider(canvasSize: Size) {
     val cx = canvasSize.width / 2f
-
-    // Subtle dashed-look using two overlaid lines (outer glow + main line)
     drawLine(
-        color       = CatLoopColors.DarkRedCircle.copy(alpha = 0.08f),
+        color       = CatLoopColors.DarkRedCircle.copy(alpha = 0.06f),
         start       = Offset(cx, 0f),
         end         = Offset(cx, canvasSize.height),
-        strokeWidth = 6f,
-    )
-    drawLine(
-        color       = CatLoopColors.DarkRedCircle.copy(alpha = 0.22f),
-        start       = Offset(cx, 0f),
-        end         = Offset(cx, canvasSize.height),
-        strokeWidth = 2f,
+        strokeWidth = 1.5f,
     )
 }
 
 /**
- * Draws small left/right rotation hint arrows inside the ring area.
+ * Draws small left/right rotation hint chevrons inside the ring area.
  */
 fun DrawScope.drawRotationHints(
     center: Offset,
@@ -67,7 +66,6 @@ fun DrawScope.drawRotationHints(
     val hintSize = 14f * density
     val alpha    = 0.18f
 
-    // Left arrow "◁"
     val leftActive  = ringRotDir == -1
     val rightActive = ringRotDir == 1
     val leftAlpha   = if (leftActive)  0.75f else alpha
@@ -113,7 +111,7 @@ fun DrawScope.drawRing(
 ) {
     // Outer glow shadow
     drawCircle(
-        color  = CatLoopColors.DarkRedCircle.copy(alpha = 0.18f),
+        color  = CatLoopColors.DarkRedCircle.copy(alpha = 0.15f),
         radius = radius + strokeWidth * 0.7f,
         center = center,
         style  = Stroke(width = strokeWidth * 0.6f),
@@ -127,7 +125,7 @@ fun DrawScope.drawRing(
     )
     // Inner gloss line
     drawCircle(
-        color  = Color.White.copy(alpha = 0.20f),
+        color  = Color.White.copy(alpha = 0.15f),
         radius = radius - strokeWidth * 0.40f,
         center = center,
         style  = Stroke(width = strokeWidth * 0.12f),
@@ -223,6 +221,7 @@ fun DrawScope.drawParticleTrail(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cat  (free 2-D position; faces direction of velocity)
+// Uses the logo.png bitmap if provided, otherwise falls back to drawn cat face.
 // ─────────────────────────────────────────────────────────────────────────────
 
 fun DrawScope.drawCat(
@@ -234,6 +233,7 @@ fun DrawScope.drawCat(
     velY: Float,
     catSize: Float,
     catScale: Float = 1f,
+    catBitmap: ImageBitmap? = null,
 ) {
     val catX = center.x + catNormX * ringRadius
     val catY = center.y + catNormY * ringRadius
@@ -242,47 +242,85 @@ fun DrawScope.drawCat(
     val facingAngle = if (velX == 0f && velY == 0f) 0f
                       else Math.toDegrees(atan2(velY.toDouble(), velX.toDouble())).toFloat()
 
-    if (catScale != 1f) {
-        scale(
-            scaleX = 1f / catScale.coerceAtLeast(0.6f),
-            scaleY = catScale,
-            pivot  = catCenter,
-        ) {
-            drawCatFace(catCenter, catSize, facingAngle)
+    if (catBitmap != null) {
+        // Draw the bitmap cat with rotation and squash/stretch
+        val drawRadius = catSize * catScale
+        val drawWidth  = (drawRadius * 2f / catScale.coerceAtLeast(0.6f)).toInt()
+        val drawHeight = (drawRadius * 2f * catScale).toInt()
+
+        withTransform({
+            rotate(degrees = facingAngle + 90f, pivot = catCenter)
+            if (catScale != 1f) {
+                scale(
+                    scaleX = 1f / catScale.coerceAtLeast(0.6f),
+                    scaleY = catScale,
+                    pivot  = catCenter,
+                )
+            }
+        }) {
+            val bmpSize = catBitmap.width.coerceAtLeast(1)
+            drawImage(
+                image   = catBitmap,
+                srcOffset = IntOffset.Zero,
+                srcSize   = IntSize(catBitmap.width, catBitmap.height),
+                dstOffset = IntOffset(
+                    (catCenter.x - catSize).toInt(),
+                    (catCenter.y - catSize).toInt(),
+                ),
+                dstSize = IntSize(
+                    (catSize * 2).toInt(),
+                    (catSize * 2).toInt(),
+                ),
+            )
         }
     } else {
-        drawCatFace(catCenter, catSize, facingAngle)
+        // Fallback: drawn cat face
+        if (catScale != 1f) {
+            scale(
+                scaleX = 1f / catScale.coerceAtLeast(0.6f),
+                scaleY = catScale,
+                pivot  = catCenter,
+            ) {
+                drawCatFace(catCenter, catSize, facingAngle)
+            }
+        } else {
+            drawCatFace(catCenter, catSize, facingAngle)
+        }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Score HUD
+// Score HUD  — displayed ABOVE the ring circle, not inside it
 // ─────────────────────────────────────────────────────────────────────────────
 
 fun DrawScope.drawScoreHUD(
     score: Int,
     ringCenter: Offset,
+    ringRadius: Float,
+    strokeWidth: Float,
     textMeasurer: TextMeasurer,
 ) {
     val scoreStr = score.toString()
 
     val numberStyle = TextStyle(
-        fontSize   = 72.sp,
+        fontSize   = 64.sp,
         fontWeight = FontWeight.Black,
-        color      = CatLoopColors.DarkRedCircle.copy(alpha = 0.14f),
+        color      = CatLoopColors.TextBlack,
     )
     val labelStyle = TextStyle(
         fontSize      = 11.sp,
         fontWeight    = FontWeight.Bold,
-        color         = CatLoopColors.PrimaryOrange.copy(alpha = 0.38f),
+        color         = CatLoopColors.PrimaryOrange,
         letterSpacing = 3.sp,
     )
 
     val numLayout   = textMeasurer.measure(scoreStr, numberStyle)
     val labelLayout = textMeasurer.measure("SCORE", labelStyle)
 
-    val totalHeight = labelLayout.size.height + 4f + numLayout.size.height
-    val startY      = ringCenter.y - totalHeight / 2f
+    // Position above the ring — above ring top edge with a small gap
+    val ringTopY = ringCenter.y - ringRadius - strokeWidth / 2f
+    val totalH   = labelLayout.size.height + 4f + numLayout.size.height
+    val startY   = ringTopY - totalH - 16f   // 16px gap above ring
 
     drawText(
         labelLayout,
@@ -311,7 +349,7 @@ fun DrawScope.drawSafeRingGlow(
     strokeWidth: Float,
 ) {
     drawCircle(
-        color  = Color(0xFF4CAF50).copy(alpha = 0.15f),
+        color  = Color(0xFF4CAF50).copy(alpha = 0.12f),
         radius = radius + strokeWidth * 0.4f,
         center = center,
         style  = Stroke(width = strokeWidth * 0.5f),
