@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import uz.angrykitten.catloop.audio.AppAudioController
 import uz.angrykitten.catloop.data.HighScoreRepository
 import kotlin.math.*
 import kotlin.random.Random
@@ -35,9 +36,13 @@ import kotlin.random.Random
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = HighScoreRepository(application)
+    private val audioController = AppAudioController(application)
 
     private val _gameState = MutableStateFlow(GameState())
     val gameState: StateFlow<GameState> = _gameState
+
+    private val _isMusicEnabled = MutableStateFlow(true)
+    val isMusicEnabled: StateFlow<Boolean> = _isMusicEnabled
 
     val highScore: Flow<Int> = repository.highScore
 
@@ -119,6 +124,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _gameState.value = s.copy(isPaused = false)
     }
 
+    fun playMenuMusic() {
+        audioController.playMenuMusic()
+    }
+
+    fun playGameMusic() {
+        audioController.playGameMusic()
+    }
+
+    fun stopMusic() {
+        audioController.stopMusic()
+    }
+
+    fun setMusicEnabled(enabled: Boolean) {
+        _isMusicEnabled.value = enabled
+        audioController.setMusicEnabled(enabled)
+    }
+
     // ── Game loop ─────────────────────────────────────────────────────────────
 
     fun update(deltaMs: Float) {
@@ -167,6 +189,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
             if (hitSpike) {
                 gameOver = true
+                audioController.playGameOverSound()
             } else {
                 // Physics reflection off circle tangent
                 val nx  = newX / dist
@@ -200,6 +223,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 score++
                 catScale    = SQUASH_SCALE
                 squashTimer = SQUASH_MS
+                audioController.playBounceSound()
 
                 // ── Difficulty scaling ────────────────────────────────────────
                 if (score >= nextDiff) {
@@ -271,6 +295,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveHighScore(score: Int) {
         viewModelScope.launch { repository.saveHighScore(score) }
+    }
+
+    override fun onCleared() {
+        audioController.release()
+        super.onCleared()
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

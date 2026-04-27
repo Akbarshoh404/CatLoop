@@ -50,11 +50,9 @@ fun SettingsScreen(
     viewModel: GameViewModel,
 ) {
     val highScore by viewModel.highScore.collectAsState(initial = 0)
+    val musicEnabled by viewModel.isMusicEnabled.collectAsState()
 
-    // Local prefs (can be wired to DataStore in a real release build)
-    var soundEnabled    by remember { mutableStateOf(true) }
     var vibrationEnabled by remember { mutableStateOf(true) }
-    var highQuality     by remember { mutableStateOf(true) }
 
     // Entry animation
     val contentAlpha = remember { Animatable(0f) }
@@ -141,17 +139,10 @@ fun SettingsScreen(
             // ── Settings sections ────────────────────────────────────────────
             SettingsSection(title = "AUDIO") {
                 SettingsToggleRow(
-                    label       = "Sound Effects",
-                    description = "Game sounds and feedback",
-                    checked     = soundEnabled,
-                    onToggle    = { soundEnabled = it },
-                )
-                SettingsDivider()
-                SettingsToggleRow(
                     label       = "Music",
                     description = "Background music",
-                    checked     = soundEnabled,
-                    onToggle    = { soundEnabled = it },
+                    checked     = musicEnabled,
+                    onToggle    = viewModel::setMusicEnabled,
                 )
             }
 
@@ -163,13 +154,6 @@ fun SettingsScreen(
                     description = "Haptic feedback on bounce",
                     checked     = vibrationEnabled,
                     onToggle    = { vibrationEnabled = it },
-                )
-                SettingsDivider()
-                SettingsToggleRow(
-                    label       = "High Quality",
-                    description = "Particle effects and glow",
-                    checked     = highQuality,
-                    onToggle    = { highQuality = it },
                 )
             }
 

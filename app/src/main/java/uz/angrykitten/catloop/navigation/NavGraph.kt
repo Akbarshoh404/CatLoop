@@ -8,10 +8,17 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import uz.angrykitten.catloop.game.GameViewModel
@@ -26,6 +33,38 @@ fun NavGraph() {
     val navController = rememberNavController()
     // Single shared ViewModel scoped to the NavGraph composable lifetime
     val gameViewModel: GameViewModel = viewModel()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    fun syncMusicForRoute(route: String?) {
+        when {
+            route == "game" -> gameViewModel.playGameMusic()
+            route == "splash" || route == "menu" || route == "settings" || route?.startsWith("gameover") == true -> {
+                gameViewModel.playMenuMusic()
+            }
+            else -> gameViewModel.stopMusic()
+        }
+    }
+
+    LaunchedEffect(currentRoute) {
+        syncMusicForRoute(currentRoute)
+    }
+
+    DisposableEffect(lifecycleOwner, currentRoute) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> syncMusicForRoute(currentRoute)
+                Lifecycle.Event.ON_STOP -> gameViewModel.stopMusic()
+                else -> Unit
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     NavHost(
         navController    = navController,
